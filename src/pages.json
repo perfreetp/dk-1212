@@ -1,0 +1,66 @@
+{
+  "pages": [
+    {
+      "path": "pages/plaza/index",
+      "style": {
+        "navigationBarTitleText": "人格广场"
+      }
+    },
+    {
+      "path": "pages/detail/index",
+      "style": {
+        "navigationBarTitleText": "人格详情"
+      }
+    },
+    {
+      "path": "pages/create/index",
+      "style": {
+        "navigationBarTitleText": "创建人格"
+      }
+    },
+    {
+      "path": "pages/chat/index",
+      "style": {
+        "navigationBarTitleText": "试聊"
+      }
+    },
+    {
+      "path": "pages/profile/index",
+      "style": {
+        "navigationBarTitleText": "个人中心"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "AI人格市场",
+    "navigationBarBackgroundColor": "#ffffff",
+    "backgroundColor": "#f5f7fa"
+  },
+  "tabBar": {
+    "color": "#999999",
+    "selectedColor": "#6366f1",
+    "borderStyle": "black",
+    "backgroundColor": "#ffffff",
+    "list": [
+      {
+        "pagePath": "pages/plaza/index",
+        "text": "广场",
+        "iconPath": "static/icons/plaza.png",
+        "selectedIconPath": "static/icons/plaza-active.png"
+      },
+      {
+        "pagePath": "pages/create/index",
+        "text": "创建",
+        "iconPath": "static/icons/create.png",
+        "selectedIconPath": "static/icons/create-active.png"
+      },
+      {
+        "pagePath": "pages/profile/index",
+        "text": "我的",
+        "iconPath": "static/icons/profile.png",
+        "selectedIconPath": "static/icons/profile-active.png"
+      }
+    ]
+  }
+}
