@@ -199,6 +199,13 @@ page {
     }
   }
   
+  &-disabled {
+    background-color: $bg-tertiary;
+    color: $text-muted;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+  
   &-block {
     width: 100%;
   }

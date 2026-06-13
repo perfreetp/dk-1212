@@ -129,7 +129,10 @@
         </view>
       </view>
       <view class="bottom-right">
-        <view v-if="isPurchased" class="btn btn-secondary" @tap="goToChat(false)">开始聊天</view>
+        <view v-if="personality?.status !== 'online'" class="btn btn-disabled">
+          {{ personality?.status === 'draft' ? '草稿状态' : '已下架' }}
+        </view>
+        <view v-else-if="isPurchased" class="btn btn-secondary" @tap="goToChat(false)">开始聊天</view>
         <view v-else class="trial-section">
           <view class="btn btn-outline trial-btn" @tap="goToChat(true)">免费试用</view>
           <view class="buy-section">

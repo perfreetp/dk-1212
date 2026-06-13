@@ -22,6 +22,7 @@ export const usePersonalityStore = defineStore('personality', () => {
 
   function applyFilters() {
     filteredPersonalities.value = personalities.value.filter(p => {
+      if (p.status !== 'online') return false
       if (filters.value.purpose !== '全部' && p.purpose !== filters.value.purpose) return false
       if (filters.value.tone !== '全部' && p.tone !== filters.value.tone) return false
       if (filters.value.domain !== '全部' && p.domain !== filters.value.domain) return false

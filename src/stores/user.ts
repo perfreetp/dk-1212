@@ -10,6 +10,16 @@ export const useUserStore = defineStore('user', () => {
   const creatorStats = ref<CreatorStats>(mockCreatorStats)
   const revenueRecords = ref<RevenueRecord[]>(mockRevenueRecords)
 
+  let personalityStore: ReturnType<typeof import('./personality').usePersonalityStore> | null = null
+
+  function initPersonalityStore() {
+    if (!personalityStore) {
+      const { usePersonalityStore: getPersonalityStore } = require('./personality')
+      personalityStore = getPersonalityStore()
+    }
+    return personalityStore
+  }
+
   function addPurchase(purchase: Omit<Purchase, 'id' | 'purchasedAt'>) {
     const newPurchase: Purchase = {
       ...purchase,
@@ -55,7 +65,7 @@ export const useUserStore = defineStore('user', () => {
     const index = favorites.value.findIndex(f => f.personalityId === personalityId)
     if (index !== -1) {
       favorites.value.splice(index, 1)
-      personalityStore.toggleFavorite(personalityId, false)
+      initPersonalityStore().toggleFavorite(personalityId, false)
       return false
     } else {
       favorites.value.unshift({
@@ -65,7 +75,7 @@ export const useUserStore = defineStore('user', () => {
         personalityAvatar: avatar,
         favoritedAt: new Date().toISOString().split('T')[0]
       })
-      personalityStore.toggleFavorite(personalityId, true)
+      initPersonalityStore().toggleFavorite(personalityId, true)
       return true
     }
   }
