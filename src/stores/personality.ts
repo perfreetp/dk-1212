@@ -1,19 +1,30 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import type { Personality, Review } from '@/types'
 import { mockPersonalities } from '@/data/mockData'
 
+const STORAGE_KEY = 'ai_personality_data'
+
 export const usePersonalityStore = defineStore('personality', () => {
-  const personalities = ref<Personality[]>(mockPersonalities)
+  const storedData = uni.getStorageSync(STORAGE_KEY)
+  const personalities = ref<Personality[]>(storedData?.personalities || mockPersonalities)
   const selectedPersonality = ref<Personality | null>(null)
   
-  const filteredPersonalities = ref<Personality[]>([...mockPersonalities])
+  const filteredPersonalities = ref<Personality[]>([...personalities.value])
   const filters = ref({
     purpose: '全部',
     tone: '全部',
     domain: '全部',
     priceRange: { min: 0, max: Infinity }
   })
+
+  function saveToStorage() {
+    try {
+      uni.setStorageSync(STORAGE_KEY, { personalities: personalities.value })
+    } catch (e) {
+      console.error('Failed to save to storage:', e)
+    }
+  }
 
   function setFilters(newFilters: typeof filters.value) {
     filters.value = { ...filters.value, ...newFilters }
@@ -49,6 +60,7 @@ export const usePersonalityStore = defineStore('personality', () => {
       }
       personality.reviews.unshift(newReview)
       personality.rating = personality.reviews.reduce((sum, r) => sum + r.rating, 0) / personality.reviews.length
+      saveToStorage()
     }
   }
 
@@ -60,6 +72,7 @@ export const usePersonalityStore = defineStore('personality', () => {
       } else if (isAdding === false) {
         personality.favorites = Math.max(0, personality.favorites - 1)
       }
+      saveToStorage()
     }
   }
 
@@ -75,6 +88,7 @@ export const usePersonalityStore = defineStore('personality', () => {
     }
     personalities.value.unshift(newPersonality)
     filteredPersonalities.value.unshift(newPersonality)
+    saveToStorage()
     return newPersonality
   }
 
@@ -86,6 +100,7 @@ export const usePersonalityStore = defineStore('personality', () => {
       if (filterIndex !== -1) {
         filteredPersonalities.value[filterIndex] = { ...filteredPersonalities.value[filterIndex], ...updates, updatedAt: new Date().toISOString().split('T')[0] }
       }
+      saveToStorage()
     }
   }
 
@@ -103,6 +118,7 @@ export const usePersonalityStore = defineStore('personality', () => {
           createdAt: new Date().toISOString().split('T')[0]
         }
         personality.updatedAt = new Date().toISOString().split('T')[0]
+        saveToStorage()
       }
     }
   }

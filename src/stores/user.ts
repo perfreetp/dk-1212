@@ -3,10 +3,14 @@ import { ref } from 'vue'
 import type { User, Purchase, Favorite, CreatorStats, RevenueRecord } from '@/types'
 import { mockUser, mockPurchases, mockFavorites, mockCreatorStats, mockRevenueRecords } from '@/data/mockData'
 
+const USER_STORAGE_KEY = 'ai_user_data'
+
 export const useUserStore = defineStore('user', () => {
-  const user = ref<User>(mockUser)
-  const purchases = ref<Purchase[]>(mockPurchases)
-  const favorites = ref<Favorite[]>(mockFavorites)
+  const storedUserData = uni.getStorageSync(USER_STORAGE_KEY)
+  
+  const user = ref<User>(storedUserData?.user || mockUser)
+  const purchases = ref<Purchase[]>(storedUserData?.purchases || mockPurchases)
+  const favorites = ref<Favorite[]>(storedUserData?.favorites || mockFavorites)
   const creatorStats = ref<CreatorStats>(mockCreatorStats)
   const revenueRecords = ref<RevenueRecord[]>(mockRevenueRecords)
 
@@ -20,6 +24,18 @@ export const useUserStore = defineStore('user', () => {
     return personalityStore
   }
 
+  function saveUserToStorage() {
+    try {
+      uni.setStorageSync(USER_STORAGE_KEY, {
+        user: user.value,
+        purchases: purchases.value,
+        favorites: favorites.value
+      })
+    } catch (e) {
+      console.error('Failed to save user data:', e)
+    }
+  }
+
   function addPurchase(purchase: Omit<Purchase, 'id' | 'purchasedAt'>) {
     const newPurchase: Purchase = {
       ...purchase,
@@ -28,6 +44,7 @@ export const useUserStore = defineStore('user', () => {
     }
     purchases.value.unshift(newPurchase)
     user.value.balance -= purchase.price
+    saveUserToStorage()
   }
 
   function renewPurchase(purchaseId: string, price: number, duration: number, unit: 'hour' | 'day' | 'month' | 'year'): boolean {
@@ -48,6 +65,7 @@ export const useUserStore = defineStore('user', () => {
     const newExpiry = new Date(startDate.getTime() + durationMs)
     purchase.expiresAt = newExpiry.toISOString().split('T')[0]
     
+    saveUserToStorage()
     return true
   }
 
@@ -66,6 +84,7 @@ export const useUserStore = defineStore('user', () => {
     if (index !== -1) {
       favorites.value.splice(index, 1)
       initPersonalityStore().toggleFavorite(personalityId, false)
+      saveUserToStorage()
       return false
     } else {
       favorites.value.unshift({
@@ -76,6 +95,7 @@ export const useUserStore = defineStore('user', () => {
         favoritedAt: new Date().toISOString().split('T')[0]
       })
       initPersonalityStore().toggleFavorite(personalityId, true)
+      saveUserToStorage()
       return true
     }
   }
@@ -101,6 +121,7 @@ export const useUserStore = defineStore('user', () => {
 
   function recharge(amount: number) {
     user.value.balance += amount
+    saveUserToStorage()
   }
 
   return {
