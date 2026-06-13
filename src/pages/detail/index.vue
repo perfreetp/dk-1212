@@ -150,8 +150,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { ref } from 'vue'
+import { onLoad, onShow } from '@dcloudio/uni-app'
 import { usePersonalityStore } from '@/stores/personality'
 import { useUserStore } from '@/stores/user'
 import type { Personality } from '@/types'
@@ -162,15 +162,27 @@ const userStore = useUserStore()
 const personality = ref<Personality | null>(null)
 const isFavorited = ref(false)
 const isPurchased = ref(false)
+let currentId = ''
 
 onLoad((options) => {
   const id = options?.id
   if (id) {
-    personality.value = personalityStore.getPersonalityById(id) || null
-    isFavorited.value = userStore.isFavorite(id)
-    isPurchased.value = userStore.isPurchased(id)
+    currentId = id
+    loadPersonality(id)
   }
 })
+
+onShow(() => {
+  if (currentId) {
+    loadPersonality(currentId)
+  }
+})
+
+function loadPersonality(id: string) {
+  personality.value = personalityStore.getPersonalityById(id) || null
+  isFavorited.value = userStore.isFavorite(id)
+  isPurchased.value = userStore.isPurchased(id)
+}
 
 function getStatusText(status: string): string {
   const statusMap: Record<string, string> = {

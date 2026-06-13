@@ -112,7 +112,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { usePersonalityStore } from '@/stores/personality'
 import { useUserStore } from '@/stores/user'
 import { purposeOptions, toneOptions, domainOptions, priceOptions } from '@/data/mockData'
@@ -132,9 +133,14 @@ const filters = ref({
 
 const personalities = ref(personalityStore.filteredPersonalities)
 
-onMounted(() => {
-  personalities.value = personalityStore.filteredPersonalities
+onShow(() => {
+  refreshPersonalities()
 })
+
+function refreshPersonalities() {
+  personalityStore.applyFilters()
+  personalities.value = [...personalityStore.filteredPersonalities]
+}
 
 function setFilter(type: string, value: string) {
   filters.value[type as keyof typeof filters.value] = value

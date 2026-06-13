@@ -255,7 +255,7 @@ const personalityStore = usePersonalityStore()
 
 const activeTab = ref<string>('')
 const currentStatusFilter = ref<string>('all')
-const showReviews = ref(false)
+const showReviews = ref(true)
 const replyingTo = ref<string | null>(null)
 const replyContent = ref('')
 
