@@ -17,6 +17,10 @@
         </view>
       </view>
 
+      <view v-if="isTrial" class="trial-banner">
+        <text>🎭 体验模式 - 体验结束后需购买方可继续使用</text>
+      </view>
+
       <scroll-view 
         class="message-list" 
         scroll-y 
@@ -84,12 +88,14 @@ const inputText = ref('')
 const isTyping = ref(false)
 const scrollToId = ref('')
 const userAvatar = 'https://neeko-copilot.bytedance.net/api/text_to_image?prompt=friendly%20user%20avatar%20neutral&image_size=square'
+const isTrial = ref(false)
 
 onLoad((options) => {
   const id = options?.id
   if (id) {
     personality.value = personalityStore.getPersonalityById(id) || null
   }
+  isTrial.value = options?.trial === '1'
 })
 
 function goBack() {
@@ -165,6 +171,17 @@ function getCurrentTime(): string {
   flex: 1;
   display: flex;
   flex-direction: column;
+}
+
+.trial-banner {
+  background: linear-gradient(135deg, rgba($warning-color, 0.1), rgba($warning-color, 0.2));
+  padding: $spacing-sm $spacing-md;
+  text-align: center;
+  
+  text {
+    font-size: $font-size-xs;
+    color: $warning-color;
+  }
 }
 
 .chat-header {

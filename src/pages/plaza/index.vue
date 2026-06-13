@@ -181,7 +181,6 @@ function isFavorite(id: string): boolean {
 
 function toggleFavorite(personality: Personality) {
   userStore.toggleFavorite(personality.id, personality.name, personality.avatar)
-  personalityStore.toggleFavorite(personality.id)
 }
 
 function getUnitText(unit: string): string {

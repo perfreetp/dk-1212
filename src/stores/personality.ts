@@ -51,10 +51,14 @@ export const usePersonalityStore = defineStore('personality', () => {
     }
   }
 
-  function toggleFavorite(personalityId: string) {
+  function toggleFavorite(personalityId: string, isAdding?: boolean) {
     const personality = getPersonalityById(personalityId)
     if (personality) {
-      personality.favorites += 1
+      if (isAdding === true) {
+        personality.favorites += 1
+      } else if (isAdding === false) {
+        personality.favorites = Math.max(0, personality.favorites - 1)
+      }
     }
   }
 
@@ -84,6 +88,24 @@ export const usePersonalityStore = defineStore('personality', () => {
     }
   }
 
+  function updatePersonalityStatus(id: string, status: 'online' | 'offline' | 'draft') {
+    updatePersonality(id, { status })
+  }
+
+  function replyToReview(personalityId: string, reviewId: string, content: string) {
+    const personality = getPersonalityById(personalityId)
+    if (personality) {
+      const review = personality.reviews.find(r => r.id === reviewId)
+      if (review) {
+        review.reply = {
+          content,
+          createdAt: new Date().toISOString().split('T')[0]
+        }
+        personality.updatedAt = new Date().toISOString().split('T')[0]
+      }
+    }
+  }
+
   return {
     personalities,
     filteredPersonalities,
@@ -96,6 +118,8 @@ export const usePersonalityStore = defineStore('personality', () => {
     addReview,
     toggleFavorite,
     createPersonality,
-    updatePersonality
+    updatePersonality,
+    updatePersonalityStatus,
+    replyToReview
   }
 })

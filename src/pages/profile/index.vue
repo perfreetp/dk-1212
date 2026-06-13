@@ -154,15 +154,62 @@
 
       <view class="my-personalities">
         <view class="section-subtitle">我的人格</view>
-        <view v-for="personality in myPersonalities" :key="personality.id" class="personality-item">
-          <image :src="personality.avatar" class="avatar-md" mode="aspectFill" />
-          <view class="personality-info">
+        <view class="status-tabs">
+          <view 
+            v-for="tab in statusTabs" 
+            :key="tab.value"
+            :class="['status-tab', { active: currentStatusFilter === tab.value }]"
+            @tap="currentStatusFilter = tab.value"
+          >
+            {{ tab.label }}
+          </view>
+        </view>
+        <view v-for="personality in filteredMyPersonalities" :key="personality.id" class="personality-item">
+          <image :src="personality.avatar" class="avatar-md" mode="aspectFill" @tap="goToDetail(personality.id)" />
+          <view class="personality-info" @tap="goToDetail(personality.id)">
             <text class="personality-name">{{ personality.name }}</text>
-            <text class="personality-stats">销量: {{ personality.sales }} | 评分: {{ personality.rating }}</text>
+            <text class="personality-stats">销量: {{ personality.sales }} | 评分: {{ personality.rating.toFixed(1) }}</text>
           </view>
-          <view :class="['status-tag', personality.status]">
-            {{ getStatusText(personality.status) }}
+          <view class="personality-actions">
+            <view :class="['status-tag', personality.status]">
+              {{ getStatusText(personality.status) }}
+            </view>
+            <view class="action-dropdown" @tap="showStatusMenu(personality)">
+              <text>⋮</text>
+            </view>
           </view>
+        </view>
+        
+        <view v-if="filteredMyPersonalities.length === 0" class="empty-state small">
+          <text class="empty-text">暂无人格</text>
+        </view>
+      </view>
+
+      <view class="my-reviews" v-if="showReviews">
+        <view class="section-subtitle">收到的评价</view>
+        <view v-for="review in allCreatorReviews" :key="review.id" class="review-item">
+          <view class="review-header">
+            <image :src="review.userAvatar" class="avatar-sm" mode="aspectFill" />
+            <view class="review-info">
+              <text class="reviewer-name">{{ review.userName }}</text>
+              <text class="review-personality">{{ review.personalityName }}</text>
+            </view>
+            <view class="review-rating">
+              <text v-for="i in 5" :key="i" :class="['star', { active: i <= review.rating }]">{{ i <= review.rating ? '★' : '☆' }}</text>
+            </view>
+          </view>
+          <text class="review-text">{{ review.content }}</text>
+          <view v-if="review.reply" class="review-reply">
+            <text class="reply-label">我的回复:</text>
+            <text class="reply-content">{{ review.reply.content }}</text>
+          </view>
+          <view v-else class="reply-btn" @tap="showReplyInput(review)">
+            <text>回复评价</text>
+          </view>
+        </view>
+        
+        <view v-if="allCreatorReviews.length === 0" class="empty-state small">
+          <text class="empty-text">暂无评价</text>
         </view>
       </view>
     </view>
@@ -194,23 +241,60 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { usePersonalityStore } from '@/stores/personality'
+import type { Review } from '@/types'
+
+interface CreatorReview extends Review {
+  personalityName: string
+}
 
 const userStore = useUserStore()
 const personalityStore = usePersonalityStore()
 
 const activeTab = ref<string>('')
+const currentStatusFilter = ref<string>('all')
+const showReviews = ref(false)
+const replyingTo = ref<string | null>(null)
+const replyContent = ref('')
+
+const statusTabs = [
+  { label: '全部', value: 'all' },
+  { label: '上架', value: 'online' },
+  { label: '下架', value: 'offline' },
+  { label: '草稿', value: 'draft' }
+]
 
 const user = computed(() => userStore.user)
 const favorites = computed(() => userStore.favorites)
 const purchases = computed(() => userStore.getActivePurchases())
 const creatorStats = computed(() => userStore.creatorStats)
 const revenueRecords = computed(() => userStore.revenueRecords)
+
 const myPersonalities = computed(() => 
   personalityStore.personalities.filter(p => p.creatorId === user.value.id)
 )
+
+const filteredMyPersonalities = computed(() => {
+  if (currentStatusFilter.value === 'all') {
+    return myPersonalities.value
+  }
+  return myPersonalities.value.filter(p => p.status === currentStatusFilter.value)
+})
+
+const allCreatorReviews = computed<CreatorReview[]>(() => {
+  const reviews: CreatorReview[] = []
+  myPersonalities.value.forEach(personality => {
+    personality.reviews.forEach(review => {
+      reviews.push({
+        ...review,
+        personalityName: personality.name
+      })
+    })
+  })
+  return reviews.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+})
 
 function recharge() {
   uni.showModal({
@@ -256,15 +340,36 @@ function goToDetail(id: string) {
 }
 
 function renewPurchase(purchase: typeof purchases.value[0]) {
+  const personality = personalityStore.getPersonalityById(purchase.personalityId)
+  const price = personality?.price || 0
+  const unit = personality?.unit || 'day'
+  
   uni.showModal({
-    title: '续费',
-    content: `确认续费「${purchase.personalityName}」？`,
+    title: '续费确认',
+    content: `确认续费「${purchase.personalityName}」？将扣除 ¥${price.toFixed(2)}（1${getUnitText(unit)}）`,
     success: (res) => {
       if (res.confirm) {
-        uni.showToast({ title: '续费成功', icon: 'success' })
+        const success = userStore.renewPurchase(purchase.id, price, 1, unit)
+        if (success) {
+          uni.showToast({ title: '续费成功', icon: 'success' })
+          purchases.value = userStore.getActivePurchases()
+        } else {
+          uni.showToast({ title: '余额不足，续费失败', icon: 'none' })
+        }
       }
     }
   })
+}
+
+function getUnitText(unit?: string): string {
+  if (!unit) return '天'
+  const units: Record<string, string> = {
+    hour: '小时',
+    day: '天',
+    month: '月',
+    year: '年'
+  }
+  return units[unit] || unit
 }
 
 function getStatusText(status: string): string {
@@ -283,6 +388,46 @@ function getRecordIcon(type: string): string {
     withdrawal: '💳'
   }
   return iconMap[type] || '💰'
+}
+
+function showStatusMenu(personality: typeof myPersonalities.value[0]) {
+  const actions = [
+    { label: '上架', value: 'online' },
+    { label: '下架', value: 'offline' },
+    { label: '设为草稿', value: 'draft' }
+  ]
+  
+  uni.showActionSheet({
+    itemList: actions.map(a => a.label),
+    success: (res) => {
+      const action = actions[res.tapIndex]
+      if (action && action.value !== personality.status) {
+        personalityStore.updatePersonalityStatus(personality.id, action.value as 'online' | 'offline' | 'draft')
+        uni.showToast({ title: '状态已更新', icon: 'success' })
+      }
+    }
+  })
+}
+
+function showReplyInput(review: CreatorReview) {
+  replyingTo.value = review.id
+  uni.showModal({
+    title: '回复评价',
+    editable: true,
+    placeholderText: '请输入回复内容...',
+    success: (res) => {
+      if (res.confirm && res.content?.trim()) {
+        const personality = myPersonalities.value.find(p => 
+          p.reviews.some(r => r.id === review.id)
+        )
+        if (personality) {
+          personalityStore.replyToReview(personality.id, review.id, res.content.trim())
+          uni.showToast({ title: '回复成功', icon: 'success' })
+        }
+      }
+      replyingTo.value = null
+    }
+  })
 }
 </script>
 
@@ -517,6 +662,27 @@ function getRecordIcon(type: string): string {
       display: block;
     }
     
+    .status-tabs {
+      display: flex;
+      gap: $spacing-sm;
+      margin-bottom: $spacing-md;
+      padding-bottom: $spacing-sm;
+      border-bottom: 1rpx solid $border-color;
+      
+      .status-tab {
+        padding: $spacing-xs $spacing-md;
+        border-radius: 20rpx;
+        font-size: $font-size-sm;
+        color: $text-secondary;
+        background-color: $bg-secondary;
+        
+        &.active {
+          background-color: $primary-color;
+          color: #fff;
+        }
+      }
+    }
+    
     .personality-item {
       display: flex;
       align-items: center;
@@ -549,24 +715,140 @@ function getRecordIcon(type: string): string {
         }
       }
       
-      .status-tag {
-        font-size: $font-size-xs;
-        padding: $spacing-xs $spacing-sm;
-        border-radius: 20rpx;
+      .personality-actions {
+        display: flex;
+        align-items: center;
+        gap: $spacing-sm;
         
-        &.online {
-          background-color: rgba($success-color, 0.1);
-          color: $success-color;
+        .status-tag {
+          font-size: $font-size-xs;
+          padding: $spacing-xs $spacing-sm;
+          border-radius: 20rpx;
+          
+          &.online {
+            background-color: rgba($success-color, 0.1);
+            color: $success-color;
+          }
+          
+          &.offline {
+            background-color: rgba($text-muted, 0.1);
+            color: $text-muted;
+          }
+          
+          &.draft {
+            background-color: rgba($warning-color, 0.1);
+            color: $warning-color;
+          }
         }
         
-        &.offline {
-          background-color: rgba($text-muted, 0.1);
-          color: $text-muted;
+        .action-dropdown {
+          width: 48rpx;
+          height: 48rpx;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: $font-size-lg;
+          color: $text-secondary;
+        }
+      }
+    }
+  }
+  
+  .my-reviews {
+    background-color: $bg-primary;
+    border-radius: $border-radius-lg;
+    padding: $spacing-md;
+    margin-top: $spacing-md;
+    
+    .section-subtitle {
+      font-size: $font-size-base;
+      font-weight: 500;
+      color: $text-primary;
+      margin-bottom: $spacing-md;
+      display: block;
+    }
+    
+    .review-item {
+      padding: $spacing-sm 0;
+      border-bottom: 1rpx solid $border-color;
+      
+      &:last-child {
+        border-bottom: none;
+      }
+      
+      .review-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: $spacing-xs;
+        
+        .avatar-sm {
+          width: 48rpx;
+          height: 48rpx;
+          border-radius: 50%;
         }
         
-        &.draft {
-          background-color: rgba($warning-color, 0.1);
-          color: $warning-color;
+        .review-info {
+          flex: 1;
+          margin-left: $spacing-xs;
+          
+          .reviewer-name {
+            font-size: $font-size-sm;
+            font-weight: 500;
+            color: $text-primary;
+          }
+          
+          .review-personality {
+            font-size: $font-size-xs;
+            color: $text-muted;
+          }
+        }
+        
+        .review-rating {
+          .star {
+            font-size: $font-size-sm;
+            color: $border-color;
+            
+            &.active {
+              color: $warning-color;
+            }
+          }
+        }
+      }
+      
+      .review-text {
+        font-size: $font-size-sm;
+        color: $text-secondary;
+        line-height: 1.5;
+        display: block;
+        margin-bottom: $spacing-xs;
+      }
+      
+      .review-reply {
+        background-color: $bg-secondary;
+        padding: $spacing-sm;
+        border-radius: $border-radius;
+        margin-top: $spacing-xs;
+        
+        .reply-label {
+          font-size: $font-size-xs;
+          color: $primary-color;
+          display: block;
+        }
+        
+        .reply-content {
+          font-size: $font-size-sm;
+          color: $text-primary;
+          display: block;
+          margin-top: 4rpx;
+        }
+      }
+      
+      .reply-btn {
+        margin-top: $spacing-xs;
+        
+        text {
+          font-size: $font-size-xs;
+          color: $primary-color;
         }
       }
     }

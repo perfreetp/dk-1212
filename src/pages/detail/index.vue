@@ -129,15 +129,18 @@
         </view>
       </view>
       <view class="bottom-right">
-        <view v-if="!isPurchased" class="buy-section">
-          <view class="price-info">
-            <text class="price-symbol">¥</text>
-            <text class="price-value">{{ personality?.price }}</text>
-            <text class="price-unit">/{{ getUnitText(personality?.unit) }}</text>
+        <view v-if="isPurchased" class="btn btn-secondary" @tap="goToChat(false)">开始聊天</view>
+        <view v-else class="trial-section">
+          <view class="btn btn-outline trial-btn" @tap="goToChat(true)">免费试用</view>
+          <view class="buy-section">
+            <view class="price-info">
+              <text class="price-symbol">¥</text>
+              <text class="price-value">{{ personality?.price }}</text>
+              <text class="price-unit">/{{ getUnitText(personality?.unit) }}</text>
+            </view>
+            <view class="btn btn-primary" @tap="buyPersonality">购买</view>
           </view>
-          <view class="btn btn-primary" @tap="buyPersonality">购买</view>
         </view>
-        <view v-else class="btn btn-secondary" @tap="goToChat">开始聊天</view>
       </view>
     </view>
   </view>
@@ -202,7 +205,6 @@ function toggleFavorite() {
     personality.value.name,
     personality.value.avatar
   )
-  personalityStore.toggleFavorite(personality.value.id)
 }
 
 function sharePersonality() {
@@ -243,9 +245,10 @@ function buyPersonality() {
   })
 }
 
-function goToChat() {
+function goToChat(isTrial: boolean = false) {
   if (!personality.value) return
-  uni.navigateTo({ url: `/pages/chat/index?id=${personality.value.id}` })
+  const url = `/pages/chat/index?id=${personality.value.id}&trial=${isTrial ? '1' : '0'}`
+  uni.navigateTo({ url })
 }
 </script>
 
@@ -614,6 +617,17 @@ function goToChat() {
     display: flex;
     align-items: center;
     gap: $spacing-sm;
+    
+    .trial-section {
+      display: flex;
+      align-items: center;
+      gap: $spacing-sm;
+      
+      .trial-btn {
+        padding: $spacing-sm $spacing-md;
+        font-size: $font-size-sm;
+      }
+    }
     
     .buy-section {
       display: flex;
